@@ -1,6 +1,7 @@
 #include <string.h> 
 #include <omp.h>
 #include <stdio.h>
+#include <unistd.h>
 
 int N;
 int M;
@@ -30,7 +31,10 @@ int SumaPadre(int renglon[N]){
     #pragma omp master
     for (int i = 0; i < 1; i++) {
         suma += renglon[0] + renglon[1];
+        
+    
     }
+
     return suma;
 }
 
@@ -38,13 +42,14 @@ int SumaPadre(int renglon[N]){
     void renglonHijo(int suma, int N, int renglon[]) {
        
         renglon[0] = suma;
-        #pragma omp parallel for 
-        for (int i = 1; i < N - 1; i++) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 1; i < N ; i++) {
             renglon[i] = suma / 2;
         }
     }
 
 void pintarRenglon(int renglon[N]){
+
     #pragma omp synchronized parallel for 
     for (int i = 0; i < N; i++) {
         printf("[%d]", renglon[i]);
@@ -60,8 +65,11 @@ int main() {
     
     int matriz[N][N];
 
+    //Definir el numero de hilos
+    omp_set_num_threads(N);
+
     // Llenar la matriz
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             matriz[i][j] = i+1;
@@ -69,32 +77,38 @@ int main() {
     }
 
     pintaMatriz(N,N, matriz);
+    printf("\n");
 
     // Calcular la suma de los primeros dos elementos de la matriz por renglon 
     int MatrizReducida[N][M];
     int Resultado[N];
-#pragma omp synchronized parallel for
-   for (int i = 0; i < N; i++){
+   
 
-    for (int j = 0; j < M; j++) {
-        int suma = SumaPadre(matriz[i]);
-        int renglon[M];
-        //Modificar el renglon
-        renglonHijo(suma, N, renglon);
+    memset(Resultado, 0, sizeof(Resultado));
 
-        //Guardar el renglon en la matriz de prueba
-        
-        MatrizReducida[i][j] = renglon[j];
+int renglon[M];
+    for (int i = 0; i < N; i++){
+    memset(renglon, 0, sizeof(renglon));
+    int renglon[M];
+    int suma = SumaPadre(matriz[i]);
+    
+    //Modificar el renglon
+    renglonHijo(suma, N, renglon);
 
+   for (int j = 0; j < M; j++) {
         //Suma el renglon
         int sumaRenglon = sumaHijos(renglon);
         Resultado[i] = sumaRenglon;
+        
+        
         }
 
    }
+
+
+
    
-    printf("Matriz reducida\n");
-    pintaMatriz(N,M, MatrizReducida);
+   
     printf("Resultado\n");
     pintarRenglon(Resultado);
     return 0;
